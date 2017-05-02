@@ -1,6 +1,7 @@
 (ns metropolis.core
   (:require [metropolis.shaders :as s]
             [metropolis.renderer :as renderer]
+            [cljs.core.match :refer-macros [match]]
             cljsjs.three))
 
 (enable-console-print!)
@@ -9,7 +10,8 @@
 
 ;; define your app data so that it doesn't get over-written on reload
 
-(defonce app-state (atom {:text "Hello world!"}))
+(defonce app-state (atom {:text "Hello world!"
+                          :count 0}))
 
 (defn teardown []
   (when-let [renderer (:renderer @app-state)]
@@ -21,6 +23,7 @@
 
   ;;First initiate the basic elements of a THREE scene
   (let [scene    (js/THREE.Scene.)
+        scene-two    (js/THREE.Scene.)
         camera (js/THREE.PerspectiveCamera. 75 ; Angle
                                             (renderer/getAspect)
                                             0.1 ; Near
@@ -35,6 +38,9 @@
                                                        :vertexShader s/vertexShader
                                                        :fragmentShader s/fragmentShader}))
 
+
+        plane      (THREE.PlaneBufferGeometry. 5 5 8 8)
+        planeMesh  (js/THREE.Mesh. plane testShader)
         mesh     (js/THREE.Mesh. box testShader)
         renderer (js/THREE.WebGLRenderer.)]
 
@@ -51,17 +57,46 @@
     ;;Add camera, mesh and box to scene and then that to DOM node.
     (.add scene camera)
     (.add scene mesh)
+    (.add scene-two planeMesh)
+
     (.appendChild js/document.body (.-domElement renderer))
 
     (set! (.. camera -position -z) 3)
-    ;Kick off the animation loop updating
+
+;    (swap! CURRENT-SCENE (fn [] (condp =
+;                                   scene scene-two
+;                                   scene-two scene)
+
+    ; Wire in our renderer
+    (swap! app-state #(assoc %
+                             :count 10))
+
     (swap! app-state #(assoc %
                              :renderer renderer))
+
+    (swap! app-state #(assoc %
+                             :scene scene))
+
+
     (defn render []
+
+      (swap! app-state #(update %
+                             :count inc))
+
+      ;Ping Pong Nonsense
+      (match [(mod (@app-state :count) 480)]
+        [0] (swap! app-state #(assoc %
+                                     :scene scene-two))
+        [240] (swap! app-state #(assoc %
+                                     :scene scene))
+        :else 0)
+
+
       (aset mesh "rotation" "y" (+ 0.01 (.-y (.-rotation mesh))))
-      (.render renderer scene camera))
+      (.render renderer (@app-state :scene) camera))
 
 
+    ;Kick off the animation loop updating
     (defn animate []
       (.requestAnimationFrame js/window animate)
       (render))

@@ -8,6 +8,7 @@
 
   :dependencies [[org.clojure/clojure "1.8.0"]
                  [cljsjs/three "0.0.84-0"]
+                 [org.clojure/core.match "0.3.0-alpha4"]
                  [org.clojure/clojurescript "1.9.229"]
                  [org.clojure/core.async  "0.3.442"
                   :exclusions [org.clojure/tools.reader]]]
